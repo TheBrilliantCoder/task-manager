@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="
+             http://maven.apache.org/POM/4.0.0
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.badlogic</groupId>   <!-- package namespace -->
+    <artifactId>task-manager</artifactId>   <!-- project name -->
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>   <!-- compile project for Java 21 -->
+    </properties>
+
+    <!-- for any JUnit dependencies, use the version defined by JUnit's BOM -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>6.1.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+
+        <!-- JUnit Jupiter -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>   <!-- use for test only -->
+        </dependency>
+
+        <!-- Gson -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.14.0</version>
+        </dependency>
+
+    </dependencies>
+
+    <!-- plugins Maven uses when building -->
+    <build>
+        <plugins>
+            <plugin>
+              <artifactId>maven-surefire-plugin</artifactId>    <!-- plugin to run tests -->
+                <version>3.5.6</version>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
