@@ -4,34 +4,26 @@ import java.util.ArrayList;
 import java.time.LocalDate;
 
 class TaskManager {
-  private ArrayList<Task> tasks;
+  private TaskRepository repository;
+  private int currentID;
 
   TaskManager() {
-    tasks = new ArrayList<>();
+    repository = new TaskRepository();
+    currentID = repository.getLatestTaskID();
   }
 
-  void createTask(int id, String title, LocalDate startTime, LocalDate dueTime) {
-    Task task = new Task(id, title, startTime, dueTime);
-    tasks.add(task);
+  void createTask(String title, LocalDate startTime, LocalDate dueTime) {
+    Task task = new Task(currentID+1, title, startTime, dueTime);
+    repository.saveTask(task);
+    currentID++;
   }
 
   void deleteTask(int taskid) {
-    for (int i = tasks.size() - 1; i >= 0; i--) {
-      int curid = tasks.get(i).getID();
-      if (curid == taskid) {
-        tasks.remove(i);
-        break;
-      }
-    }
+    repository.removeTask(taskid);
   }
 
   void completeTask(int taskid) {
-    for (Task task : tasks) {
-      if (task.getID() == taskid) {
-        task.setCompleted(true);
-        break;
-      }
-    }
+    repository.markCompleted(taskid);
   }
 
   String calculateStatus(LocalDate startTime, LocalDate dueTime) {
@@ -42,11 +34,11 @@ class TaskManager {
     } else if (date.compareTo(dueTime) > 0) {
       return "OVERDUE";
     }
-
     return "DOING";
   }
 
-  void listTasks() {
+  void listAllTasks() {
+    ArrayList<Task> tasks = repository.loadAllTasks();
     System.out.println("ID\tSTATUS\tTitle");
     for (Task task : tasks) {
       String status;
@@ -56,7 +48,6 @@ class TaskManager {
       } else {
         status = calculateStatus(task.getStartTime(), task.getDueTime());
       }
-
       System.out.printf("%d\t%s\t\t%s%n", task.getID(), status, task.getTitle());
     }
   }

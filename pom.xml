@@ -51,10 +51,36 @@
     <!-- plugins Maven uses when building -->
     <build>
         <plugins>
+
             <plugin>
               <artifactId>maven-surefire-plugin</artifactId>    <!-- plugin to run tests -->
                 <version>3.5.6</version>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>   <!-- plugin to include jar from external package -->
+                <version>3.6.2</version>    <!-- this means Gson, JUnit package can be found at resulting JAR -->
+
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.badlogic.taskmanager.Main</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 
