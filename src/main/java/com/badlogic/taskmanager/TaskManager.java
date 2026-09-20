@@ -39,7 +39,7 @@ class TaskManager {
 
   void listAllTasks() {
     ArrayList<Task> tasks = repository.loadAllTasks();
-    System.out.println("ID\tSTATUS\tTitle");
+    System.out.println("ID\tSTATUS\t\tTitle");
     for (Task task : tasks) {
       String status;
 
