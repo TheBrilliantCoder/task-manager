@@ -1,134 +1,193 @@
 package com.badlogic.taskmanager;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonSerializer;
 import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonSerializer;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
+/*
+ * Stores tasks as JSON Lines (one task per line) — the same on-disk format as
+ * before, so existing data files keep working.
+ *
+ * The file is parsed once at start-up and held in a map afterwards. Lookups by
+ * ID are O(1), listing touches no I/O at all, adding a task costs one append,
+ * and deleting or updating costs one rewrite (previously each of those
+ * re-read and re-wrote the file several times over).
+ */
 class TaskRepository {
-  private Path filePath;
-  private Gson gson;
+  private static final Path DEFAULT_FILE = Paths.get("data", "tasks.json");
+
+  private final Path filePath;
+  private final Gson gson;
+  // id -> task, in insertion order. The source of truth while running.
+  private final Map<Integer, Task> tasks = new LinkedHashMap<>();
+  private int maxId;
 
   TaskRepository() {
-    filePath = Paths.get("./data/tasks.json");
-    gson = new GsonBuilder()
-      // LocalDate -> JSON String
+    this(DEFAULT_FILE);
+  }
+
+  // Alternate location, handy for tests.
+  TaskRepository(Path filePath) {
+    this.filePath = filePath;
+    this.gson = new GsonBuilder()
       .registerTypeAdapter(
         LocalDate.class,
         (JsonSerializer<LocalDate>)
-          (src, typeOfSrc, context) -> context.serialize(src.toString())
-      )
-      // JSON String -> LocalDate
+          (src, typeOfSrc, context) -> context.serialize(src.toString()))
       .registerTypeAdapter(
         LocalDate.class,
         (JsonDeserializer<LocalDate>)
-          (json, typeOfT, context) -> LocalDate.parse(json.getAsString())
-      )
+          (json, typeOfT, context) -> LocalDate.parse(json.getAsString()))
       .create();
+    load();
+  }
 
-    try {
-      Files.createDirectories(filePath.getParent());
 
-      if (Files.notExists(filePath)) {
-        Files.writeString(filePath, "");
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
+  Task find(int taskId) {
+    return tasks.get(taskId);
+  }
+
+  Collection<Task> findAll() {
+    return Collections.unmodifiableCollection(tasks.values());
+  }
+
+  int nextId() {
+    return maxId + 1;
+  }
+
+
+  // Adds a new task. Costs a single append to the file.
+  void add(Task task) {
+    tasks.put(task.getId(), task);
+    maxId = Math.max(maxId, task.getId());
+    append(task);
+  }
+
+  // Persists an in-place change (e.g. completion) to an existing task.
+  void update(Task task) {
+    if (tasks.containsKey(task.getId())) {
+      tasks.put(task.getId(), task);
+      rewrite();
     }
   }
 
-  int getLatestTaskID() {
-    ArrayList<Task> tasks = loadAllTasks();
-    int mx = 0;
-    for (Task task : tasks) {
-      mx = mx > task.getID() ? mx : task.getID();
+  // return true when a task with that ID existed and was removed.
+  boolean remove(int taskId) {
+    if (tasks.remove(taskId) == null) {
+      return false;
     }
-    return mx;
+    rewrite();
+    return true;
   }
 
-  ArrayList<Task> loadAllTasks() {
-    ArrayList<Task> tasks = new ArrayList<>();
+  private void load() {
+    if (!Files.exists(filePath)) {
+      return;
+    }
 
-    try {
-      for (String line : Files.readAllLines(filePath)) {
+    int skipped = 0;
+    try (BufferedReader reader = Files.newBufferedReader(filePath)) {
+      String line;
+      while ((line = reader.readLine()) != null) {
         if (line.isBlank()) {
           continue;
         }
-
-        Task task = gson.fromJson(line, Task.class);
-        tasks.add(task);
+        Task task = parse(line);
+        if (task == null) {
+          skipped++;
+          continue;
+        }
+        tasks.put(task.getId(), task);
+        maxId = Math.max(maxId, task.getId());
       }
-    } catch (Exception e) {
-      e.printStackTrace();
+    } catch (IOException e) {
+      throw new UncheckedIOException("Could not read " + filePath, e);
     }
-    return tasks;
+
+    if (skipped > 0) {
+      System.err.println("Warning: skipped " + skipped + " unreadable record(s) in " + filePath);
+    }
   }
 
-  void saveTask(Task task) {
-    String json = gson.toJson(task);
-
+  // return the parsed task, or null if the line is corrupt or incomplete.
+  private Task parse(String line) {
     try {
+      Task task = gson.fromJson(line, Task.class);
+      return (task != null && task.isValid()) ? task : null;
+    } catch (RuntimeException e) {
+      return null;
+    }
+  }
+
+  private void append(Task task) {
+    try {
+      ensureParentDirectory();
       Files.writeString(
-          filePath,
-          json + "\n",
-          StandardOpenOption.APPEND
+        filePath,
+        gson.toJson(task) + "\n",
+        StandardOpenOption.CREATE,
+        StandardOpenOption.APPEND
       );
-    } catch (Exception e) {
-      e.printStackTrace();
+    } catch (IOException e) {
+      throw new UncheckedIOException("Could not write to " + filePath, e);
     }
   }
 
-  void overwriteAllTasks(ArrayList<Task> tasks) {
+  /*
+   * Writes every task in one pass to a temporary file, then moves it into
+   * place, so an interrupted write cannot leave a half-written task list.
+   */
+  private void rewrite() {
+    Path temp = filePath.resolveSibling(filePath.getFileName() + ".tmp");
     try {
-      Files.writeString(filePath, "");
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
-    for (Task task : tasks) {
-      saveTask(task);
-    }
-  }
-
-  void markCompleted(int taskid) {
-    Task task = null;
-
-    try {
-      for (String line : Files.readAllLines(filePath)) {
-        if (line.isBlank()) {
-          continue;
-        }
-
-        task = gson.fromJson(line, Task.class);
-        if (task.getID() == taskid) {
-          break;
+      ensureParentDirectory();
+      try (BufferedWriter writer = Files.newBufferedWriter(
+        temp,
+        StandardOpenOption.CREATE,
+        StandardOpenOption.TRUNCATE_EXISTING,
+        StandardOpenOption.WRITE)
+      ) {
+        for (Task task : tasks.values()) {
+          writer.write(gson.toJson(task));
+          writer.write('\n');
         }
       }
-    } catch (Exception e) {
-      e.printStackTrace();
+      moveIntoPlace(temp);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Could not write to " + filePath, e);
     }
-
-    task.setCompleted(true);
-    removeTask(taskid);
-    saveTask(task);
   }
 
-  void removeTask(int taskid) {
-    ArrayList<Task> tasks = loadAllTasks();
-    for (int i = 0; i < tasks.size(); i++) {
-      Task task = tasks.get(i);
-      if (task.getID() == taskid) {
-        tasks.remove(i);
-        break;
-      }
+  private void moveIntoPlace(Path temp) throws IOException {
+    try {
+      Files.move(
+        temp, filePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE
+      );
+    } catch (AtomicMoveNotSupportedException e) {
+      Files.move(temp, filePath, StandardCopyOption.REPLACE_EXISTING);
     }
-    overwriteAllTasks(tasks);
   }
 
+  private void ensureParentDirectory() throws IOException {
+    Path parent = filePath.getParent();
+    if (parent != null) {
+      Files.createDirectories(parent);
+    }
+  }
 }
