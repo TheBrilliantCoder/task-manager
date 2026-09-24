@@ -3,13 +3,13 @@ id: 03-exercise
 aliases: []
 tags: []
 ---
-# EXERCISE — SMALL VALIDATION PRACTICE
+# EXERCISE — VALIDATION PHASE
 
 ## Project
 
-You have already completed the Specification, Design, and Implementation phases for the Task Manager.
+Task Manager
 
-For this exercise, focus on only **two functional requirements**:
+Functional requirements under validation:
 
 ```text
 FR-01:
@@ -23,168 +23,430 @@ The system shall calculate the correct task status based on completion state, st
 
 # Part 1 — Validation Checklist
 
-Create a validation checklist for **FR-01 and FR-07 only**.
+## FR-01
 
-For each requirement:
+**Requirement**  
+The system shall allow the user to create a task with a title, start time, and due time.
+
+**What must be checked?**  
+A task can be created when a valid title, start time, and due time are provided, and the resulting task contains exactly those values.
+
+**How will it be checked?**  
+Use a unit test against the Task Manager creation operation.
+
+### Review of your answer
+
+Your answer was essentially correct:
+
+> "A task created when a valid title, start and due time is given."
+
+The important improvement is to include **what must be true about the created task**, not merely that creation does not fail.
+
+A better validation question is:
+
+> "After creation, does the system produce a task containing the requested data?"
+
+This makes the expected behavior observable.
+
+---
+
+## FR-07
+
+**Requirement**  
+The system shall calculate the correct task status based on completion state, start time, and due time.
+
+**What must be checked?**  
+The system must return:
 
 ```text
-Requirement
-What must be checked?
-How will it be checked?
+TODO     → current date is before start date
+DOING    → current date is on/after start and on/before due date
+OVERDUE  → current date is after due date
+DONE     → task has been completed
 ```
 
-You only need **2 checklist items**.
+**How will it be checked?**  
+Use unit tests with a **controlled reference date** covering normal cases and boundary cases.
 
-FR-01
-* What must be checked? A task created when a valid title, start and due time is given.
-* How will it be checked? A unit test that construct Task object and see if the Task can be created.
+### Important lesson from your answer
 
-FR-07
-* What must be checked? A task status must be be DONE if completed, OVERDUE if over due time, TODO when before start time and DOING when between start and due time.
-* How will it be checked? A unit test that create 3 Tasks object correspond to each state, mark 1 task to be DONE and check if the status is shown correctly.
+You correctly identified the four states.  
+However, your test design did not fully define **what date the status calculation was being evaluated against**.
+
+For example:
+
+```text
+TC-03A
+start = 2026-09-23
+due   = 2026-09-24
+expected = DOING
+```
+
+This is only meaningful if we also say:
+
+```text
+current date = 2026-09-24
+```
+
+Without that condition, the test case is incomplete.
+
+**Lesson:**
+
+> For time-dependent behavior, the test input must include the reference time/date.
 
 ---
 
 # Part 2 — Test Cases
 
-Create test cases covering the two requirements.
-
-Include:
-
-* Normal case
-* Invalid case
-* Boundary cases
-
-For each test case:
+A good test set should cover:
 
 ```text
-Test ID
-Requirement
-Input
-Steps
-Expected result
+Normal behavior
+Invalid behavior
+Boundary behavior
 ```
 
-Determine the **expected result before running the program**.
+## FR-01 Test Cases
 
-**FR-01**
+### TC-01 — Create task with valid input
 
-TC-01
-    Input: non-blank title, valid start and due time
-    Step: call TaskManager -> create a task with title, start and due time -> assert if title, start and due time is recorded in the created Task.
-    Expected output: Input values match Task attribute values.
+**Requirement:** FR-01
 
-TC-02A
-    Input: blank title
-    Step: call TaskManager -> create a task with blank title -> check if software assert exception for invalid input.
-    Expected output: Throw an exception of illegal Argument.
+**Input:**
 
-TC-02B
-    Input: valid title, start time = 2026-09-24, due time = 2026-09-23
-    Step: Construct Task object -> assert invalid time duration
-    Expected output: Throw exception.
+```text
+Title = "Junit test"
+Start = 2026-09-23
+Due   = 2026-09-24
+```
 
+**Steps:**
 
-**FR-07**
-TC-03A
-    Input: valid title, start time = 2026-09-23, due time = 2026-09-24
-    Step: Construct Task object -> check status of that object
-    Expected output: Task status is DOING
+1. Call Task Manager's create operation.
+2. Provide the title, start date, and due date.
+3. Inspect the created task.
 
-TC-03B
-    Input: valid title, start time = 2026-09-20, due time = 2026-09-21
-    Step: Construct Task object -> check status of that object
-    Expected output: Task status is OVERDUE
+**Expected result:**
 
-TC-03C
-    Input: valid title, start time = 2026-09-25, due time = 2026-09-26
-    Step: Construct Task object -> check status of that object
-    Expected output: Task status is TODO
+```text
+A task is created successfully and contains:
 
-TC-03D
-    Input: valid title, start time = 2026-09-20, due time = 2026-09-21
-    Step: Construct Task object -> mark the task as completed -> check status of Task object
-    Expected output: Task status is DONE
+Title     = "Junit test"
+Start     = 2026-09-23
+Due       = 2026-09-24
+```
 
-TC-04A
-    Input: valid title, start time = 2026-09-23, due time = 2026-09-24
-    Step: Construct Task object -> check status of Task object with current date of 2026-09-24
-    Expected output: Task status is DOING
+---
 
-TC-04B
-    Input: valid title, start time = 2026-09-23, due time = 2026-09-24
-    Step: Construct Task object -> check status of Task object with current date of 2026-09-23
-    Expected output: Task status is DOING
+### TC-02A — Blank title
+
+**Requirement:** FR-01
+
+**Input:**
+
+```text
+Title = ""
+Start = 2026-09-23
+Due   = 2026-09-24
+```
+
+**Steps:**
+
+1. Attempt to create the task.
+2. Observe the result.
+
+**Expected result:**
+
+```text
+IllegalArgumentException is thrown.
+```
+
+### Review of your answer
+
+You wrote:
+
+> "check if software assert exception"
+
+The concept is correct, but remember:
+
+> The software **throws** an exception; the test **asserts** that the exception is thrown.
+
+So the validation behavior is:
+
+```text
+Software → throws IllegalArgumentException
+Test     → assertThrows(IllegalArgumentException.class, ...)
+```
+
+---
+
+### TC-02B — Due date before start date
+
+**Requirement:** FR-01
+
+**Input:**
+
+```text
+Title = "Junit test"
+Start = 2026-09-24
+Due   = 2026-09-23
+```
+
+**Steps:**
+
+1. Attempt to create the task.
+2. Observe the result.
+
+**Expected result:**
+
+```text
+IllegalArgumentException is thrown.
+```
+
+---
+
+## FR-07 Test Cases
+
+For these tests, explicitly define the reference date.
+
+### TC-03A — TODO
+
+**Input:**
+
+```text
+Start = 2026-09-25
+Due   = 2026-09-26
+Current date = 2026-09-24
+Completed = false
+```
+
+**Steps:**
+
+1. Create a task with Task Manager.
+2. Set the current date before start time.
+3. Check for the Task status.
+
+**Expected result:**
+
+```text
+TODO
+```
+
+---
+
+### TC-03B — DOING
+
+**Input:**
+
+```text
+Start = 2026-09-23
+Due   = 2026-09-24
+Current date = 2026-09-24
+Completed = false
+```
+
+**Steps:**
+
+1. Create a task with Task Manager.
+2. Set the current date between start time and due time.
+3. Check for the Task status.
+
+**Expected result:**
+
+```text
+DOING
+```
+
+---
+
+### TC-03C — OVERDUE
+
+**Input:**
+
+```text
+Start = 2026-09-19
+Due   = 2026-09-20
+Current date = 2026-09-24
+Completed = false
+```
+
+**Steps:**
+
+1. Create a task with Task Manager.
+2. Set the current date after due time.
+3. Check for the Task status.
+
+**Expected result:**
+
+```text
+OVERDUE
+```
+
+---
+
+### TC-03D — DONE overrides time status
+
+**Input:**
+
+```text
+Start = 2026-09-19
+Due   = 2026-09-20
+Current date = 2026-09-24
+Completed = true
+```
+
+**Steps:**
+
+1. Create a task with Task Manager.
+2. Set the current date after due time.
+3. Mark the Task as completed with Task Manager.
+4. Check for the Task status.
+
+**Expected result:**
+
+```text
+DONE
+```
+
+This verifies an important business rule:
+
+```text
+completed = true
+        ↓
+      DONE
+```
+
+even though the task is also past its due date.
+
+---
+
+## Boundary Cases
+
+### TC-04A — Current date equals start date
+
+**Input:**
+
+```text
+Start = 2026-09-23
+Due   = 2026-09-24
+Current date = 2026-09-23
+Completed = false
+```
+
+**Steps:**
+
+1. Create a task with Task Manager.
+2. Set the current date the same as start time.
+3. Check for the Task status.
+
+**Expected result:**
+
+```text
+DOING
+```
+
+---
+
+### TC-04B — Current date equals due date
+
+**Input:**
+
+```text
+Start = 2026-09-23
+Due   = 2026-09-24
+Current date = 2026-09-24
+Completed = false
+```
+
+**Steps:**
+
+1. Create a task with Task Manager.
+2. Set the current date the same as due time.
+3. Check for the Task status.
+
+**Expected result:**
+
+```text
+DOING
+```
+
+> A boundary test does not merely test code. It also exposes ambiguity in the requirement.
 
 ---
 
 # Part 3 — Execute Tests
 
-Run the tests against your actual Task Manager.
+The rule is:
 
-Record:
+> Expected result is defined before execution. Actual result is recorded after execution.
+
+Based on your execution:
+
+| Test   | Expected                           | Actual                             | Result |
+| ------ | ---------------------------------- | ---------------------------------- | ------ |
+| TC-01  | Task created with requested values | Task created with requested values | PASS   |
+| TC-02A | IllegalArgumentException           | IllegalArgumentException           | PASS   |
+| TC-02B | IllegalArgumentException           | IllegalArgumentException           | PASS   |
+| TC-03A | TODO                               | TODO                               | PASS   |
+| TC-03B | DOING                              | DOING                              | PASS   |
+| TC-03C | OVERDUE                            | OVERDUE                            | PASS   |
+| TC-03D | DONE                               | DONE                               | PASS   |
+| TC-04A | DOING                              | DOING                              | PASS   |
+| TC-04B | DOING                              | DOING                              | PASS   |
+
+Therefore, based on your recorded execution:
 
 ```text
-Test ID
-Expected result
-Actual result
-PASS / FAIL
+All functional test cases passed.
 ```
 
-Do not change the expected result to match the implementation.
+### One important improvement
 
-TC-01
-    * Expected output: Task("Junit test", 2026-09-23, 2026-09-24)
-    * Actual output: Task("Junit test", 2026-09-23, 2026-09-24)
-    PASS
+You used:
 
-TC-02A
-    * Expected output: IllegalArgumentException("A task needs a title.")
-    * Actual output: IllegalArgumentException("A task needs a title.")
-    PASS
+```java
+LocalDate date = LocalDate.now();
+```
 
-TC-02B
-    * Expected output: IllegalArgumentException("The due date cannot be before the start date.")
-    * Actual output: IllegalArgumentException("The due date cannot be before the start date.")
-    PASS
+inside the status test.
 
-TC-03A
-    * Expected output: DOING
-    * Actual output: DOING
-    PASS
+That works today because the current date is September 24, 2026, but it makes the test **time-dependent**.
 
-TC-03B
-    * Expected output: OVERDUE
-    * Actual output: OVERDUE
-    PASS
+Tomorrow, the same test could produce a different result.
 
-TC-03C
-    * Expected output: TODO
-    * Actual output: TODO
-    PASS
+For example:
 
-TC-03D
-    * Expected output: DONE
-    * Actual output: DONE
-    PASS
+```java
+assertEquals("DOING", task2.status(LocalDate.now()));
+```
 
-TC-04A
-    * Expected output: DOING
-    * Actual output: DOING
-    PASS
+is not a stable test.
 
-TC-04B
-    * Expected output: DOING
-    * Actual output: DOING
-    PASS
+A better test is:
+
+```java
+LocalDate testDate = LocalDate.of(2026, 9, 24);
+
+assertEquals("DOING", task2.status(testDate));
+```
+
+Even better, the test cases should define the reference date deliberately for every case.
+
+### Lesson
+
+> Automated tests should not depend on the real clock when testing a specific historical condition.
+
+This is one of the most important test-writing lessons from your exercise.
 
 ---
 
 # Part 4 — Integration Test
 
-Perform **one integration test**.
+## IT-01 — Create task through CLI and persist it
 
-Test:
+**Purpose**
+
+Verify that the components work together:
 
 ```text
 CLI
@@ -193,35 +455,52 @@ Task Manager
  ↓
 Task Repository
  ↓
-tasks.json
+File
 ```
 
-Example:
-
-Create a task through the CLI and verify that the correct task data is saved to `tasks.json`.
-
-Record:
+**Input:**
 
 ```text
-Expected
-Actual
-PASS / FAIL
+task add Integration test
+2026-09-23
+2026-09-24
 ```
 
-IT-01: Test create a Task from CLI
-    Input: command line `add task Integration test`
-    Step: call CLI logic -> handle command line input of adding a task -> check if `IT-01.json` contain the record of task created.
-    Expected output: {"id":1,"title":"Integration test","startTime":"2026-09-23","dueTime":"2026-09-24","completed":false}
-    Actual output: {"id":1,"title":"Integration test","startTime":"2026-09-23","dueTime":"2026-09-24","completed":false}
-    PASS
+**Expected:**
+
+A task is created and persisted with:
+
+```json
+{
+  "id": 1,
+  "title": "Integration test",
+  "startTime": "2026-09-23",
+  "dueTime": "2026-09-24",
+  "completed": false
+}
+```
+
+**Actual:**
+
+The created task was found in the repository with the expected values.
+
+**Result:**
+
+```text
+PASS
+```
+
+### Lesson
+
+> Always know exactly what layer your test is proving.
 
 ---
 
 # Part 5 — System Test
 
-Perform **one complete system test** from the user's perspective.
+## ST-01 — Complete user workflow
 
-Scenario:
+The scenario is:
 
 ```text
 1. Create a task.
@@ -230,176 +509,253 @@ Scenario:
 4. List the task again.
 ```
 
-Record:
+## Expected
 
 ```text
-Expected
-Actual
-PASS / FAIL
+Create:
+Created task <id>: System test
+
+List:
+<id> DOING System test
+
+Complete:
+Marked task <id> as done
+
+List again:
+<id> DONE System test
 ```
 
+## Actual
 
-ST-01
-    Expected:
-        Create a task -> "Created task <id>: <title>"
-        List the task -> "<id>  DOING   <title>"
-        Complete the task -> "Marked task <id> as done"
-        List task again -> "<id>  DONE   <title>"
-    Actual:
-        Create a task -> "Created task <id>: <title>"
-        List the task -> "<id>  DOING   <title>"
-        Complete the task -> "Marked task <id> as done"
-        List task again -> "<id>  DONE   <title>"
-    PASS
+Your recorded execution produced the same sequence.
+
+```text
+PASS
+```
 
 ---
 
 # Part 6 — Non-Functional Requirement
 
-Test **one case** of NFR-01:
+## NFR-01 — Clear error message
+
+**Requirement:**
+
+The CLI should provide a clear error message for invalid input.
+
+**Input:**
 
 ```text
-The CLI should provide a clear error message
-for invalid input.
+task add
 ```
 
-Use one invalid input, for example:
+**Expected error:**
 
 ```text
-Create a task with an empty title.
+Error: Missing task title. (e.g., task add My Title)
 ```
 
-Record:
+**Actual error:**
 
 ```text
-Input
-Expected error
-Actual error
-PASS / FAIL
+Error: Missing task title. (e.g., task add My Title)
 ```
 
-TC-05
-    Input: `task add`
-    Expected error: "Error: Missing task title. (e.g., task add My Title)"
-    Actual error: "Error: Missing task title. (e.g., task add My Title)"
-    PASS
+**Result:**
+
+```text
+PASS
+```
+
+Your test satisfies the exercise.
+
+### Why this is an NFR test
+
+The functional rule is:
+
+```text
+Invalid command → reject invalid operation
+```
+
+The non-functional requirement is concerned with **how the rejection is communicated**:
+
+```text
+Is the error message understandable and useful?
+```
+
+That distinction is worth remembering.
 
 ---
 
 # Part 7 — Defect
 
-If any test fails, create **one defect report**.
+Because all of your real tests passed, there was no actual defect to report.  
+However, the exercise asks you to understand what a defect report would look like, so here is an **illustrative example only**.
+
+## Example Defect Report
+
+**Defect ID:**
 
 ```text
-Defect ID:
-
-Related test:
-
-Description:
-
-Steps to reproduce:
-
-Expected result:
-
-Actual result:
+DEF-001
 ```
 
-Focus on **what went wrong**, not the technical cause.
+**Related test:**
 
-> There is no defect, all test case pass successfully.
-> In the standard solution, you should give an example to illustrate defect report
+```text
+TC-04B
+```
+
+**Description:**
+
+```text
+A task is reported as OVERDUE when the current date is exactly equal to its due date.
+```
+
+**Steps to reproduce:**
+
+```text
+1. Create a task with start date 2026-09-23.
+2. Set due date to 2026-09-24.
+3. Evaluate the task on 2026-09-24.
+4. View the task status.
+```
+
+**Expected result:**
+
+```text
+DOING
+```
+
+**Actual result:**
+
+```text
+OVERDUE
+```
+
+### Important lesson
+
+Notice that the defect report does **not** say:
+
+```text
+The comparison operator in Task.status() is wrong.
+```
+
+That would be a technical cause.
+
+The defect report focuses on:
+
+```text
+What the user/test observed
+vs.
+What was expected
+```
+
+This matches the instruction:
+
+> Focus on what went wrong, not the technical cause.
 
 ---
 
 # Part 8 — Fix and Regression Test
 
-Fix one defect if you found one.
+Since your real execution found no defect, there is no real fix or regression run to record.  
+For learning purposes, using the illustrative defect above:
 
-Then:
+| Test   | Before fix | After fix |
+| ------ | ---------- | --------- |
+| TC-04B | FAIL       | PASS      |
+| TC-03C | PASS       | PASS      |
 
-1. Rerun the original failed test.
-2. Rerun one related test.
-
-Record:
-
-| Test          | Before fix | After fix |
-| ------------- | ---------- | --------- |
-| Original test | FAIL       | PASS      |
-| Related test  | PASS/FAIL  | PASS/FAIL |
-
-The goal is to check:
+Interpretation:
 
 ```text
-Was the defect fixed?
-+
-Did the fix break related functionality?
+TC-04B:
+The original defect was fixed.
+
+TC-03C:
+The fix did not break the normal OVERDUE behavior.
 ```
 
-> All test cases passed.
-> There is only problem with test code writing which is not related to functionality of the software.
-> Whenever i create a new test, i always rerun all the test cases and they all passed.
+### What regression testing means
+
+Regression testing is not:
+
+> "Run the whole application again."
+
+The important idea is:
+
+```text
+Fix defect
+   ↓
+Rerun failed test
+   ↓
+Rerun related behavior
+   ↓
+Check that old functionality still works
+```
+
+Your statement:
+
+> "Whenever I create a new test, I always rerun all the test cases and they all passed."
+
+is actually a good development habit.
+
+But there is an important distinction:
+
+```text
+Running all tests after a code change
+        =
+Regression testing practice
+
+Choosing related tests specifically to verify a fix
+        =
+Targeted regression testing
+```
+
+Both are useful.
 
 ---
 
 # Part 9 — Acceptance Test
 
-Perform **one small acceptance test**.
+## AT-01 — Create a task and see its status
 
-User goal:
+**User goal:**
 
-> "I want to create a task and see its correct status."
+> I want to create a task and see its correct status.
 
-Test:
-
-```text
-1. Create a task.
-2. View the task.
-3. Check its status.
-```
-
-Record:
+**User action:**
 
 ```text
-User action
-Expected outcome
-Actual outcome
-PASS / FAIL
+1. Run the application.
+2. Enter:
+
+task add Acceptance test
+<start date>
+<due date>
+
+3. Enter:
+
+task list
 ```
 
-AT-01
-    User action: user run the software manually -> 'task add Acceptance test' -> 'task list'
-    Expected outcome: user see the task he created and know the status of it through task list.
-    Actual outcome: the output on Terminal show the information needed.
-    PASS
-
----
-
-# Validation Flow
-
-Your exercise should now follow this flow:
+**Expected outcome:**
 
 ```text
-Requirements
-    ↓
-Validation checklist
-    ↓
-Test cases
-    ↓
-Execute tests
-    ↓
-Integration test
-    ↓
-System test
-    ↓
-Non-functional test
-    ↓
-Defect
-    ↓
-Fix
-    ↓
-Regression test
-    ↓
-Acceptance test
+The created task is displayed,
+and its status is shown correctly.
 ```
 
-**No validation report is required for this exercise.**
+**Actual outcome:**
+
+```text
+The terminal displays the created task and its status.
+```
+
+**Result:**
+
+```text
+PASS
+```
+
