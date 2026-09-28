@@ -8,9 +8,9 @@ import java.time.LocalDate;
  */
 class Task {
   private final int id;
-  private final String title;
+  private String title;
   private final LocalDate startTime;
-  private final LocalDate dueTime;
+  private LocalDate dueTime;
   private boolean completed;
 
   Task(int id, String title, LocalDate startTime, LocalDate dueTime) {
@@ -43,6 +43,14 @@ class Task {
 
   void setCompleted(boolean completed) {
     this.completed = completed;
+  }
+
+  void setTitle(String title) {
+    this.title = title;
+  }
+
+  void setDueTime(LocalDate date) {
+    this.dueTime = date;
   }
 
   /*

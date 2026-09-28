@@ -11,6 +11,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class TaskManagerTest {
 
   @Test
+  void editTaskTitleAndDueTime() {
+    TaskRepository repository = new TaskRepository(Paths.get("data", "TC-06.json"));
+    TaskManager manager = new TaskManager(repository);
+
+    Task task = manager.createTask(
+      "Junit test",
+      LocalDate.of(2026, 9, 23),
+      LocalDate.of(2026, 9, 24)
+    );
+
+    int id = task.getId();
+    manager.editTask(id, "A new title", LocalDate.of(2026, 9, 25));
+
+    TaskRepository repository1 = new TaskRepository(Paths.get("data", "TC-06.json"));
+    Task updatedTask = repository1.find(id);
+
+    assertEquals("A new title", updatedTask.getTitle());
+    assertEquals(LocalDate.of(2026, 9, 25), updatedTask.getDueTime());
+    assertEquals(LocalDate.of(2026, 9, 23), updatedTask.getStartTime());
+  }
+
+  @Test
   void createTaskWithValidInput() {
     TaskRepository repository = new TaskRepository(Paths.get("data", "TC-01.json"));
     TaskManager manager = new TaskManager(repository);

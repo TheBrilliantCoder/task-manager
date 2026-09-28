@@ -56,14 +56,51 @@ class CLI {
         case "add" -> add(argument, scanner);
         case "delete" -> delete(argument);
         case "done" -> done(argument);
+        case "edit" -> edit(argument, scanner);
         case "list" -> System.out.print(manager.renderTaskList());
         default -> System.out.println(
-            "Invalid command! Unknown action: " + action + ". Use add, list, done or delete.");
+            "Invalid command! Unknown action: " + action + ". Use add, list, done, edit or delete.");
       }
     } catch (IllegalArgumentException e) {
       System.out.println("Error: " + e.getMessage());
     } catch (RuntimeException e) {
       System.out.println("An unexpected error occurred: " + e.getMessage());
+    }
+  }
+
+  private void edit(String argument, Scanner scanner) {
+    Integer taskId = parseId(argument, "task edit 1");
+    if (taskId == null) {
+      return;
+    }
+
+    String titleInput = readLine("Enter new title (ENTER to keep): ", scanner);
+    if (titleInput == null) {
+      System.out.println("Edit cancelled.");
+      return;
+    }
+    String title = titleInput.isEmpty() ? null : titleInput;
+
+    String dueInput = readLine("Enter new due time (yyyy-mm-dd, ENTER to keep): ", scanner);
+    if (dueInput == null) {
+      System.out.println("Invalid title. Edit cancelled.");
+      return;
+    }
+
+    LocalDate dueTime = null;
+    if (!dueInput.isEmpty()) {
+      try {
+        dueTime = LocalDate.parse(dueInput);
+      } catch (DateTimeParseException e) {
+        System.out.println("Invalid date. Use the format yyyy-mm-dd. Edit cancelled.");
+        return;
+      }
+    }
+
+    switch (manager.editTask(taskId, title, dueTime)) {
+      case UPDATED -> System.out.println("Updated task " + taskId + ".");
+      case NO_CHANGES -> System.out.println("Nothing to update for task " + taskId + ".");
+      case NOT_FOUND -> System.out.println("No task found with ID " + taskId + ".");
     }
   }
 
@@ -126,16 +163,20 @@ class CLI {
     }
   }
 
-  // return the parsed date, or null if input ran out or was invalid too often.
+  private String readLine(String prompt, Scanner scanner) {
+    System.out.print(prompt);
+    return scanner.hasNextLine() ? scanner.nextLine().trim() : null;
+  }
+
   private LocalDate readDate(String prompt, Scanner scanner) {
     for (int attempt = 0; attempt < MAX_DATE_ATTEMPTS; attempt++) {
-      System.out.print(prompt);
-      if (!scanner.hasNextLine()) {
+      String line = readLine(prompt, scanner);
+      if (line == null) {
         return null;
       }
 
       try {
-        return LocalDate.parse(scanner.nextLine().trim());
+        return LocalDate.parse(line);
       } catch (DateTimeParseException e) {
         System.out.println("Invalid date. Use the format yyyy-mm-dd, e.g. 2026-09-20.");
       }
@@ -144,4 +185,5 @@ class CLI {
     System.out.println("Cancelled: too many invalid dates.");
     return null;
   }
+
 }

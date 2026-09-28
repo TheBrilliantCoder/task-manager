@@ -16,6 +16,12 @@ class TaskManager {
     NOT_FOUND
   }
 
+  enum EditResult {
+    UPDATED,
+    NO_CHANGES,
+    NOT_FOUND
+  }
+
   private final TaskRepository repository;
 
   TaskManager() {
@@ -34,9 +40,8 @@ class TaskManager {
     if (title == null || title.isBlank()) {
       throw new IllegalArgumentException("A task needs a title.");
     }
-    if (dueTime.isBefore(startTime)) {
-      throw new IllegalArgumentException("The due date cannot be before the start date.");
-    }
+
+    requireValidRange(startTime, dueTime);
 
     Task task = new Task(repository.nextId(), title.trim(), startTime, dueTime);
     repository.add(task);
@@ -77,5 +82,39 @@ class TaskManager {
       );
     }
     return out.toString();
+  }
+
+  private static void requireValidRange(LocalDate startTime, LocalDate dueTime) {
+    if (dueTime.isBefore(startTime)) {
+      throw new IllegalArgumentException("The due date cannot be before the start date.");
+    }
+  }
+
+  EditResult editTask(int taskId, String newTitle, LocalDate newDueTime) {
+    Task task = repository.find(taskId);
+    if (task == null) {
+      return EditResult.NOT_FOUND;
+    }
+    if (newTitle == null && newDueTime == null) {
+      return EditResult.NO_CHANGES;
+    }
+
+    if (newDueTime != null) {
+      requireValidRange(task.getStartTime(), newDueTime);
+    }
+
+    boolean titleChanged = newTitle != null && !newTitle.equals(task.getTitle());
+    boolean dueChanged = newDueTime != null && !newDueTime.equals(task.getDueTime());
+
+    if (titleChanged) {
+      task.setTitle(newTitle);
+    }
+    if (dueChanged) {
+      task.setDueTime(newDueTime);
+    }
+    if (titleChanged || dueChanged) {
+      repository.update(task);
+    }
+    return EditResult.UPDATED;
   }
 }

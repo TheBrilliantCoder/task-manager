@@ -56,60 +56,67 @@ class CLITest {
     TaskManager manager = new TaskManager(repository);
     CLI cli = new CLI(manager);
 
+    PrintStream originOut = System.out;
     ByteArrayOutputStream output = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(output));
 
-    // ---------- Step 1: Create + List ----------
-    LocalDate date1 = LocalDate.now();
-    LocalDate date2 = date1.plusDays(1);
+    try {
+      System.setOut(new PrintStream(output));
 
-    String input1 = String.format("""
-      task add System test
-      %s
-      %s
-      task list
-      """, date1, date2);
+      // ---------- Step 1: Create + List ----------
+      LocalDate date1 = LocalDate.now();
+      LocalDate date2 = date1.plusDays(1);
 
-    cli.applicationLoop(new Scanner(input1));
+      String input1 = String.format("""
+          task add System test
+          %s
+          %s
+          task list
+          """, date1, date2);
 
-    String result1 = output.toString();
+      cli.applicationLoop(new Scanner(input1));
 
-    // Verify task was created and listed
-    assertTrue(result1.contains("Created task"));
-    assertTrue(result1.contains("System test"));
-    assertTrue(result1.contains("DOING"));
+      String result1 = output.toString();
 
-    // ---------- Extract task ID ----------
-    String taskLine = Arrays.stream(result1.split("\\R"))
-      .map(String::trim)
-      .filter(line -> line.matches("\\d+\\s+DOING\\s+System test"))
-      .findFirst()
-      .orElseThrow();
+      // Verify task was created and listed
+      assertTrue(result1.contains("Created task"));
+      assertTrue(result1.contains("System test"));
+      assertTrue(result1.contains("DOING"));
 
-    int taskId = Integer.parseInt(taskLine.split("\\s+")[0]);
+      // ---------- Extract task ID ----------
+      String taskLine = Arrays.stream(result1.split("\\R"))
+        .map(String::trim)
+        .filter(line -> line.matches("\\d+\\s+DOING\\s+System test"))
+        .findFirst()
+        .orElseThrow();
 
-    // ---------- Step 2: Complete + List ----------
-    output.reset();
+      int taskId = Integer.parseInt(taskLine.split("\\s+")[0]);
 
-    String input2 = """
-      task done %d
-      task list
-      exit
-      """.formatted(taskId);
+      // ---------- Step 2: Complete + List ----------
+      output.reset();
 
-    cli.applicationLoop(new Scanner(input2));
+      String input2 = """
+        task done %d
+        task list
+        exit
+        """.formatted(taskId);
 
-    String result2 = output.toString().trim();
+      cli.applicationLoop(new Scanner(input2));
 
-    // Verify task was completed
-    assertTrue(result2.contains("Marked task " + taskId + " as done"));
+      String result2 = output.toString().trim();
 
-    // Verify the same task is now DONE
-    String expectedDoneLine = taskId + " DONE System test";
+      // Verify task was completed
+      assertTrue(result2.contains("Marked task " + taskId + " as done"));
 
-    String normalizedResult = result2.replaceAll("\\s+", " ");
+      // Verify the same task is now DONE
+      String expectedDoneLine = taskId + " DONE System test";
 
-    assertTrue(normalizedResult.contains(expectedDoneLine));
+      String normalizedResult = result2.replaceAll("\\s+", " ");
+
+      assertTrue(normalizedResult.contains(expectedDoneLine));
+
+    } finally {
+      System.setOut(originOut);
+    }
   }
 
   @Test
@@ -126,12 +133,18 @@ class CLITest {
 
     Scanner scanner = new Scanner(input);
 
+    PrintStream originOut = System.out;
     ByteArrayOutputStream output = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(output));
 
-    cli.applicationLoop(scanner);
+    try {
+      System.setOut(new PrintStream(output));
 
-    String result = output.toString().trim();
-    assertTrue(result.contains("Error: Missing task title. (e.g., task add My Title)"));
+      cli.applicationLoop(scanner);
+
+      String result = output.toString().trim();
+      assertTrue(result.contains("Error: Missing task title. (e.g., task add My Title)"));
+    } finally {
+      System.setOut(originOut);
+    }
   }
 }
