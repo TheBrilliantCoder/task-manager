@@ -74,7 +74,7 @@ class TaskManagerTest {
       LocalDate.of(2026, 9, 20)
     );
 
-    LocalDate date = LocalDate.now();
+    LocalDate date = LocalDate.of(2026, 9, 23);
 
     assertEquals("TODO", task1.status(date));
     assertEquals("DOING", task2.status(date));

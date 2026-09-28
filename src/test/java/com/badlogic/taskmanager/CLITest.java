@@ -13,6 +13,7 @@ import java.util.Scanner;
 import java.util.Arrays;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.time.LocalDate;
 
 class CLITest {
 
@@ -59,12 +60,15 @@ class CLITest {
     System.setOut(new PrintStream(output));
 
     // ---------- Step 1: Create + List ----------
-    String input1 = """
+    LocalDate date1 = LocalDate.now();
+    LocalDate date2 = date1.plusDays(1);
+
+    String input1 = String.format("""
       task add System test
-      2026-09-24
-      2026-09-25
+      %s
+      %s
       task list
-      """;
+      """, date1, date2);
 
     cli.applicationLoop(new Scanner(input1));
 
