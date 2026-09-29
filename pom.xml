@@ -97,6 +97,76 @@
       </executions>
     </plugin>
 
+    <!-- Prepare the JAR for jpackage -->
+    <!-- This plugin let Maven perform file-operation commands -->
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-antrun-plugin</artifactId>
+      <version>3.1.0</version>
+      <executions>
+        <execution>
+          <id>prepare-jpackage</id>
+          <phase>package</phase>
+          <goals>
+            <goal>run</goal>
+          </goals>
+
+          <configuration>
+            <target>
+              <!-- Create an isolated folder containing only the JAR to package -->
+              <mkdir dir="${project.build.directory}/package-input"/>
+              <!-- Copy the shaded JAR into the jpackage input folder -->
+              <copy
+                file="${project.build.directory}/${project.build.finalName}.jar"
+                todir="${project.build.directory}/package-input"/>
+            </target>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+
+    <plugin>
+      <groupId>org.codehaus.mojo</groupId>
+      <artifactId>exec-maven-plugin</artifactId>
+      <version>3.5.0</version>
+
+      <!-- Execute jpackage to create the application installer -->
+      <!-- This plugin let Maven run external programs -->
+      <executions>
+        <execution>
+          <id>create-installer</id>  <!-- Creates a .deb installer on Linux -->
+          <phase>package</phase>
+          <goals>
+            <goal>exec</goal>
+          </goals>
+
+          <configuration>
+            <executable>jpackage</executable>
+
+            <arguments>
+              <argument>--type</argument>
+              <argument>deb</argument>
+
+              <argument>--name</argument>
+              <argument>TaskManager</argument>
+
+              <argument>--input</argument>
+              <argument>${project.build.directory}/package-input</argument>
+
+              <argument>--main-jar</argument>
+              <argument>${project.build.finalName}.jar</argument>
+
+              <argument>--main-class</argument>
+              <argument>com.badlogic.taskmanager.Main</argument>
+
+              <argument>--dest</argument>
+              <argument>${project.build.directory}/dist</argument>
+            </arguments>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+
   </plugins>
 </build>
 
